@@ -1,7 +1,7 @@
 import json
 
-input_file = "alerts.jsonl"   # your teammate's file
-output_file = "alerts.json"   # FastAPI expects this
+input_file = "alerts.jsonl"   # teammate's file
+output_file = "alerts.json"   # FastAPI conversion
 
 alerts = []
 
