@@ -8,10 +8,10 @@ import json
 
 app = FastAPI(title="Cloud Alert API")
 
-# Allow frontend / tools to call your API (wide open is fine for a class project)
+# Allow frontend / tools to call to API 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],       # you can restrict this later if needed
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,7 +63,7 @@ def load_alerts() -> None:
         if alert_id is not None:
             ALERTS_BY_ID[alert_id] = alert
 
-    # Helpful debug print so you can see it worked
+    # Helpful debug print to see if it worked
     print(f"Loaded {len(ALERTS)} alerts from {source_name}")
 
 
@@ -171,7 +171,7 @@ def get_stats():
     }
 
 
-# Allows you to run the server directly with "Run" in PyCharm
+# run the server directly with "Run" in PyCharm
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
