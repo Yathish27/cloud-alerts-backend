@@ -1,5 +1,6 @@
 """
-Generate sample alert data with advanced analytics fields for testing the Cloud Security Alerts backend.
+Generate large-scale alert data (1M+ records) for advanced analytics.
+Uses JSONL format for efficient generation and loading.
 """
 import json
 from datetime import datetime, timedelta
@@ -7,22 +8,24 @@ import random
 import uuid
 from collections import defaultdict
 
-# Extended alert types
+# Extended alert types with threat intelligence
 ALERT_TYPES = [
     "UnauthorizedAccessAttempt", "SuspiciousAPICall", "DataExfiltration",
     "PrivilegeEscalation", "MaliciousIPConnection", "AnomalousTraffic",
     "FailedLoginAttempt", "ConfigurationChange", "SecurityGroupModification",
     "IAMPolicyChange", "CryptocurrencyMining", "RansomwareActivity",
     "LateralMovement", "CommandAndControl", "DataEncryption",
-    "BruteForceAttack", "SQLInjection", "XSSAttack", "DDoSAttack"
+    "BruteForceAttack", "SQLInjection", "XSSAttack", "DDoSAttack",
+    "ZeroDayExploit", "InsiderThreat", "ComplianceViolation",
+    "DataBreach", "AccountTakeover", "APTSuspiciousActivity"
 ]
 
 # Extended sources
 SOURCES = [
     "AWS-CloudTrail", "AWS-GuardDuty", "AWS-SecurityHub", "AWS-VPCFlowLogs",
-    "AWS-WAF", "GCP-CloudLogging", "GCP-SecurityCommandCenter",
+    "AWS-WAF", "AWS-Shield", "GCP-CloudLogging", "GCP-SecurityCommandCenter",
     "Azure-SecurityCenter", "Azure-Sentinel", "Cloudflare-Logs",
-    "Datadog-Security", "Splunk-Enterprise"
+    "Datadog-Security", "Splunk-Enterprise", "Elastic-Security"
 ]
 
 SEVERITIES = ["low", "medium", "high", "critical"]
@@ -37,12 +40,16 @@ REGIONS = [
     {"code": "sa-east-1", "country": "Brazil", "lat": -23.5505, "lon": -46.6333},
     {"code": "ap-northeast-1", "country": "Japan", "lat": 35.6762, "lon": 139.6503},
     {"code": "eu-central-1", "country": "Germany", "lat": 50.1109, "lon": 8.6821},
+    {"code": "ap-south-1", "country": "India", "lat": 19.0760, "lon": 72.8777},
+    {"code": "ca-central-1", "country": "Canada", "lat": 45.5017, "lon": -73.5673},
+    {"code": "eu-north-1", "country": "Sweden", "lat": 59.3293, "lon": 18.0686}
 ]
 
 RESOURCE_TYPES = [
     "EC2-Instance", "S3-Bucket", "RDS-Database", "Lambda-Function",
     "IAM-Role", "VPC-Subnet", "CloudFront-Distribution", "ELB-LoadBalancer",
-    "EKS-Cluster", "DynamoDB-Table", "ElastiCache-Cluster"
+    "EKS-Cluster", "ECS-Service", "DynamoDB-Table", "ElastiCache-Cluster",
+    "KMS-Key", "SecretsManager-Secret", "CloudWatch-LogGroup"
 ]
 
 # Threat actor profiles
@@ -76,8 +83,8 @@ def generate_cost_impact(severity, resource_type):
     }
     return base_costs.get(severity, 100) * multipliers.get(resource_type, 1.0) * random.uniform(0.5, 2.0)
 
-def generate_alert(index):
-    """Generate a single alert with rich metadata for advanced analytics."""
+def generate_alert(index, start_date, end_date):
+    """Generate a single alert with rich metadata."""
     alert_type = random.choice(ALERT_TYPES)
     severity = random.choices(SEVERITIES, weights=[0.3, 0.3, 0.25, 0.15])[0]
     status = random.choices(STATUSES, weights=[0.3, 0.2, 0.3, 0.2])[0]
@@ -86,10 +93,10 @@ def generate_alert(index):
     resource_type = random.choice(RESOURCE_TYPES)
     threat_actor = random.choice(THREAT_ACTORS)
     
-    # Generate timestamp (within last 90 days)
-    days_ago = random.randint(0, 90)
-    hours_ago = random.randint(0, 23)
-    timestamp = (datetime.now() - timedelta(days=days_ago, hours=hours_ago)).isoformat() + "Z"
+    # Generate timestamp within date range
+    time_range = (end_date - start_date).total_seconds()
+    random_seconds = random.randint(0, int(time_range))
+    timestamp = (start_date + timedelta(seconds=random_seconds)).isoformat() + "Z"
     
     # Generate IP addresses
     source_ip = generate_ip_address()
@@ -109,11 +116,11 @@ def generate_alert(index):
     compliance_violations = random.sample(COMPLIANCE_FRAMEWORKS, random.randint(0, 3))
     
     # Generate user/account info
-    user_id = f"user_{random.randint(1, 1000)}"
+    user_id = f"user_{random.randint(1, 10000)}"
     account_id = f"{random.randint(100000000000, 999999999999)}"
     
     # Generate resource info
-    resource_name = f"{resource_type.lower().replace('-', '_')}_{random.randint(1000, 9999)}"
+    resource_name = f"{resource_type.lower().replace('-', '_')}_{random.randint(1000, 99999)}"
     resource_id = f"{resource_type.lower()}-{random.randint(100000, 999999)}"
     
     # Generate alert message
@@ -201,24 +208,66 @@ def generate_alert(index):
     }
 
 def main():
-    """Generate sample alert data."""
-    print("Generating sample alert data...")
+    """Generate large-scale alert data."""
+    import sys
     
-    # Generate 1000 alerts (you can change this number)
-    num_alerts = 1000
-    alerts = [generate_alert(i) for i in range(num_alerts)]
+    # Configuration
+    num_alerts = 1_200_000  # 1.2M records
+    output_file = "aws_like_alerts_10000.jsonl"  # Use JSONL for large files
     
-    # Save as JSON
-    output_file = "aws_like_alerts_10000.json"
+    print(f"🚀 Generating {num_alerts:,} alerts...")
+    print("This may take several minutes. Please wait...")
+    
+    # Date range: Last 90 days
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=90)
+    
+    # Statistics tracking
+    stats = {
+        "severities": defaultdict(int),
+        "statuses": defaultdict(int),
+        "sources": defaultdict(int),
+        "regions": defaultdict(int),
+        "alert_types": defaultdict(int)
+    }
+    
+    # Generate and write in batches
+    batch_size = 10000
+    written = 0
+    
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(alerts, f, indent=2)
+        for i in range(0, num_alerts, batch_size):
+            batch_end = min(i + batch_size, num_alerts)
+            batch = []
+            
+            for j in range(i, batch_end):
+                alert = generate_alert(j, start_date, end_date)
+                batch.append(alert)
+                
+                # Update statistics
+                stats["severities"][alert["severity"]] += 1
+                stats["statuses"][alert["status"]] += 1
+                stats["sources"][alert["source"]] += 1
+                stats["regions"][alert["resource"]["region"]] += 1
+                stats["alert_types"][alert["type"]] += 1
+            
+            # Write batch to file
+            for alert in batch:
+                f.write(json.dumps(alert) + "\n")
+            
+            written = batch_end
+            progress = (written / num_alerts) * 100
+            print(f"Progress: {written:,}/{num_alerts:,} ({progress:.1f}%)", end="\r")
     
-    print(f"✅ Generated {len(alerts)} alerts in {output_file}")
-    print(f"📊 Statistics:")
-    print(f"   - Severities: {dict((s, sum(1 for a in alerts if a['severity'] == s)) for s in SEVERITIES)}")
-    print(f"   - Statuses: {dict((s, sum(1 for a in alerts if a['status'] == s)) for s in STATUSES)}")
-    print(f"   - Sources: {dict((s, sum(1 for a in alerts if a['source'] == s)) for s in SOURCES)}")
+    print(f"\n✅ Generated {written:,} alerts in {output_file}")
+    print(f"\n📊 Statistics:")
+    print(f"   - Severities: {dict(stats['severities'])}")
+    print(f"   - Statuses: {dict(stats['statuses'])}")
+    print(f"   - Sources: {len(stats['sources'])} unique sources")
+    print(f"   - Regions: {len(stats['regions'])} unique regions")
+    print(f"   - Alert Types: {len(stats['alert_types'])} unique types")
     print(f"\n🚀 You can now run: python main.py")
+    print(f"⚠️  Note: Loading {written:,} records may take 1-2 minutes on first startup")
 
 if __name__ == "__main__":
     main()
