@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import type { AlertsResponse, StatsResponse, Alert } from '../types';
+import type { AlertsResponse, StatsResponse, Alert, AdvancedAnalyticsResponse, PredictiveAnalyticsResponse } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -8,7 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 60000, // 60 second timeout for large datasets
 });
 
 // Add request interceptor for debugging
@@ -89,6 +89,36 @@ export const alertsApi = {
           throw new Error('Cannot connect to backend server. Please ensure the backend is running on http://127.0.0.1:8000');
         }
         throw new Error(error.response?.data?.detail || error.message || 'Failed to fetch statistics');
+      }
+      throw error;
+    }
+  },
+
+  getAdvancedAnalytics: async (): Promise<AdvancedAnalyticsResponse> => {
+    try {
+      const response = await api.get<AdvancedAnalyticsResponse>('/analytics/advanced');
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNREFUSED' || !error.response) {
+          throw new Error('Cannot connect to backend server. Please ensure the backend is running on http://127.0.0.1:8000');
+        }
+        throw new Error(error.response?.data?.detail || error.message || 'Failed to fetch advanced analytics');
+      }
+      throw error;
+    }
+  },
+
+  getPredictiveAnalytics: async (): Promise<PredictiveAnalyticsResponse> => {
+    try {
+      const response = await api.get<PredictiveAnalyticsResponse>('/analytics/predictive');
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNREFUSED' || !error.response) {
+          throw new Error('Cannot connect to backend server. Please ensure the backend is running on http://127.0.0.1:8000');
+        }
+        throw new Error(error.response?.data?.detail || error.message || 'Failed to fetch predictive analytics');
       }
       throw error;
     }

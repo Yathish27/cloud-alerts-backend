@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Shield, AlertTriangle, BarChart3, Activity } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,7 +9,8 @@ export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: BarChart3 },
+    { path: '/', label: 'Advanced Analytics', icon: BarChart3 },
+    { path: '/dashboard', label: 'Basic Dashboard', icon: Activity },
     { path: '/alerts', label: 'Alerts', icon: AlertTriangle },
   ];
 
